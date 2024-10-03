@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+unset CONSUL_HTTP_ADDR
+unset CONSUL_HTTP_TOKEN
+unset CONSUL_HTTP_SSL
+unset CONSUL_CACERT
+unset NOMAD_ADDR
+unset NOMAD_TOKEN
+unset NOMAD_CACERT
+unset NOMAD_TLS_SERVER_NAME
