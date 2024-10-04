@@ -4,6 +4,8 @@ This repo covers how to set up a cluster running both Consul and Nomad and use i
 
 There are several jobspec files for the application and each one builds on the previous, moving away from the monolithic design and towards microservices.
 
+![The home page of the HashiCups UI](img/hashicups_ui.jpg)
+
 
 ## Prerequisites
 
@@ -159,7 +161,18 @@ nomad server members
 
 ## 3. Deploy initial HashiCups application
 
-HashiCups represents a monolithic application that has been broken apart into separate services and configured to run with Docker Compose. The initial version is a translation of the fictional Docker Compose file to a Nomad jobspec.
+HashiCups represents a monolithic application that has been broken apart into separate services and configured to run with Docker Compose. The initial version is a translation of the fictional Docker Compose file to a Nomad jobspec. The services and their relationships are shown in the diagram below.
+
+![HashiCups service diagram showing relationships between the services](img/hashicups_service_diagram.jpg)
+
+This jobspec, named [`01.hashicups.nomad.hcl`](shared/jobs/01.hashicups.nomad.hcl), has the following attributes:
+- All services run on the same VM (the Nomad public client node)
+- Services are configured to use the Nomad client IP address or `localhost`
+- No service health monitoring
+- No scaling of services
+- No secure connection (HTTPS)
+
+![The first design of HashiCups running on a single Nomad public client](img/01_hashicups_diagram.jpg)
 
 Change to the `jobs` directory.
 
@@ -198,7 +211,15 @@ nomad job stop -purge hashicups
 
 ## 4. Deploy HashiCups with Consul service discovery on a single VM
 
-This jobspec integrates Consul and uses service discovery and DNS to facilitate communication between the microservices but runs all of the services on a single node.
+This jobspec, named [`02.hashicups.nomad.hcl`](shared/jobs/02.hashicups.nomad.hcl), integrates Consul and has the following attributes:
+- All services run on the same VM (the Nomad public client node)
+- Services are registered in Consul
+- Health checks have been implemented
+- Services use Consul DNS (`<service>.service.<datacenter>.<domain>`)
+- No scaling of services
+- No secure connection (HTTPS)
+
+![The second design of HashiCups running on a single Nomad public client with Consul service discovery](img/02_hashicups_diagram.jpg)
 
 Submit the job to Nomad.
 
@@ -218,7 +239,14 @@ nomad job stop -purge hashicups
 
 ## 5. Deploy HashiCups with Consul service discovery on multiple VMs
 
-This jobspec separates the services into their own task groups and allows them to run on different nodes.
+This jobspec, named [`03.hashicups.nomad.hcl`](shared/jobs/03.hashicups.nomad.hcl), has the following attributes:
+- Job has been split into multiple groups with each one containing one application service
+- Services are configured with `constraints` to now run on either the public Nomad node (Nginx) or private nodes (all other services)
+- Services use Consul DNS (`<service>.service.<datacenter>.<domain>`)
+- No scaling of services
+- No secure connection (HTTPS)
+
+![The third design of HashiCups running on multiple Nomad clients with Consul service discovery](img/03_hashicups_diagram.jpg)
 
 Submit the job to Nomad.
 
@@ -240,7 +268,17 @@ nomad job stop -purge hashicups
 
 ## 6. Deploy HashiCups with service mesh and API gateway
 
-This jobspec further integrates Consul by using service mesh and API gateway. Services use `localhost` and the Envoy proxy to enable mutual TLS and upstream service configurations for better security. The API gateway allows external access to the NGINX service.
+This jobspec, named [`04.hashicups.nomad.hcl`](shared/jobs/04.hashicups.nomad.hcl), has the following attributes:
+- All services now run on Nomad private client nodes
+- Consul service mesh integration with upstream service configurations
+- An API gateway has been added and runs on the Nomad public client node
+- Nomad Workload Identity is used to automatically generate ACL tokens for the API gateway
+- Consul service intentions have been added
+- Secure connections with custom TLS certificates and mTLS with Envoy proxy (services now use `localhost`)
+
+Additional configurations for the API gateway and service intentions exist in the `shared/jobs` directory and include [`04.api-gateway.config.sh`](shared/jobs/04.api-gateway.config.sh), [`04.api-gateway.nomad.hcl`](shared/jobs/04.api-gateway.nomad.hcl), and [`04.intentions.consul.sh`](shared/jobs/04.intentions.consul.sh).
+
+![The fourth design of HashiCups running on multiple Nomad clients with Consul service mesh and API gateway](img/04_hashicups_diagram.jpg)
 
 Set up the API gateway configurations in Consul.
 
@@ -291,7 +329,12 @@ nomad job stop -purge hashicups
 
 ## 7. Scale the HashiCups application
 
-This jobspec is the same as the API gateway version with the addition of the `scaling` block. This block instructs the Nomad Autoscaler to scale the frontend service up and down based on traffic load.
+This jobspec, named [`05.hashicups.nomad.hcl`](shared/jobs/05.hashicups.nomad.hcl), is the same as the previous one with the API gateway and service mesh but also has the following attribute:
+- The frontend service contains a `scaling` block to allow the Nomad Autoscaler to automatically scale the service based on traffic load
+
+Additional configurations for the Nomad Autoscaler exist in the `shared/jobs` directory and include [`05.autoscaler.config.sh`](shared/jobs/05.autoscaler.config.sh) and [`05.autoscaler.nomad.hcl`](shared/jobs/05.autoscaler.nomad.hcl).
+
+![The fifth design of HashiCups running on multiple Nomad clients with autoscaling enabled for the frontend service](img/05_hashicups_diagram.jpg)
 
 The Nomad Autoscaler is a separate service and is run here as a Nomad job.
 
