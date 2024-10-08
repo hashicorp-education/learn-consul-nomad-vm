@@ -151,7 +151,11 @@ source ./datacenter.env
 
 Open the Consul UI with the URL in the `Consul_UI` Terraform output variable and log in with the token in the `Consul_UI_token` output variable. You will need to trust the certificate in your browser.
 
-Open the Nomad UI with the IP in `Nomad_UI` and log in with `Nomad_UI_token`.
+Open the Nomad UI and log in with the [`ui -autheticate` command](https://developer.hashicorp.com/nomad/docs/commands/ui#authenticate). You can alternatively open the Nomad UI with the IP in `Nomad_UI` and log in with `Nomad_UI_token`.
+
+```
+nomad ui -authenticate
+```
 
 Test connectivity to the Nomad cluster from your local environment.
 
@@ -377,17 +381,21 @@ https://3.135.190.255:8443
 
 ### Scale the frontend service
 
-In another browser tab, open the Nomad UI, click on the **hashicups** job name, and then click on the **frontend** task from within the **Task Groups** list. This page displays a graph that shows scaling events at the bottom of the page. Keep this page open so you can reference it when scaling starts.
-
-Open another terminal in your local environment to generate load with the [`hey`](https://github.com/rakyll/hey) tool.
-
-Run the `hey` tool against the API gateway. In this example, the URL is `https://3.135.190.255:8443`. This command generates load for 20 seconds.
+Get the public address of the API gateway again and export it as the environment variable `API_GW`.
 
 ```
-hey -z 20s -m GET https://3.135.190.255:8443
+$(nomad job allocs --namespace=ingress api-gateway | grep -i running | awk '{print $2}') | \
+    grep -i public-ipv4 | awk -F "=" '{print $2}' | xargs | \
+    awk '{print "https://"$1":8443"}' | export API_GW=$(cat)
 ```
 
-Navigate back to the **frontend** task group page in the Nomad UI and refresh it a few times to see that additional allocations are being created as the autoscaler scales the frontend service up and removed as the autoscaler scales it back down.
+In another browser tab, open the Nomad UI, click on the **hashicups** job name, and then click on the **frontend** task from within the **Task Groups** list. This page will display a graph that shows scaling events at the bottom of the page. Keep this page open so you can reference it when scaling starts.
+
+Run the load test script and observe the graph on the frontend task page in the Nomad UI. Note that additional allocations are created as the autoscaler scales the frontend service up and then removed as the autoscaler scales it back down.
+
+```
+./05.load-test.sh $API_GW
+```
 
 Open up the terminal session from where you submitted the jobs and stop the deployment when you are ready to move on.
 

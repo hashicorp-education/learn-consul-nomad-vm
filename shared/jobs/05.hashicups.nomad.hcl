@@ -84,9 +84,19 @@ variable "db_port" {
   default = 5432
 }
 
-variable "frontend_max_scale" {
+variable "frontend_max_instances" {
   description = "The maximum number of instances to scale up to."
   default     = 5
+}
+
+variable "frontend_max_scale_up" {
+  description = "The maximum number of instances to scale up by."
+  default     = 1
+}
+
+variable "frontend_max_scale_down" {
+  description = "The maximum number of instances to scale down by."
+  default     = 2
 }
 
 ### ----------------------------------------------------------------------------
@@ -380,7 +390,7 @@ job "hashicups" {
     scaling {
       enabled = true
       min     = 1
-      max     = var.frontend_max_scale
+      max     = var.frontend_max_instances
 
       policy {
         evaluation_interval = "5s"
@@ -394,7 +404,8 @@ job "hashicups" {
             driver = "target-value"
             target = 70
             threshold = 0.05
-            max_scale_up = var.frontend_max_scale
+            max_scale_up = var.frontend_max_scale_up
+            max_scale_down = var.frontend_max_scale_down
           }
         }
       }
@@ -446,6 +457,10 @@ job "hashicups" {
         NEXT_PUBLIC_PUBLIC_API_URL= "/"
         NEXT_PUBLIC_FOOTER_FLAG="HashiCups instance ${NOMAD_ALLOC_INDEX}"
         PORT="${var.frontend_port}"
+      }
+      resources {
+        cpu    = 200
+        memory = 400
       }
     }
   }
