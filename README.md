@@ -384,7 +384,8 @@ https://3.135.190.255:8443
 Get the public address of the API gateway again and export it as the environment variable `API_GW`.
 
 ```
-$(nomad job allocs --namespace=ingress api-gateway | grep -i running | awk '{print $2}') | \
+nomad node status -verbose \
+    $(nomad job allocs --namespace=ingress api-gateway | grep -i running | awk '{print $2}') | \
     grep -i public-ipv4 | awk -F "=" '{print $2}' | xargs | \
     awk '{print "https://"$1":8443"}' | export API_GW=$(cat)
 ```
@@ -407,7 +408,7 @@ nomad job stop -purge hashicups
 
 ### Clean up jobs
 
-Stop and purge the hashicups and autoscaler jobs.
+Stop and purge the hashicups and autoscaler jobs. The [`nomad job stop` command](https://developer.hashicorp.com/nomad/docs/commands/job/stop) can accept more than one job.
 
 ```
 nomad job stop -purge hashicups autoscaler
