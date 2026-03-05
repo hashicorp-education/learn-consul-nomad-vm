@@ -90,6 +90,7 @@ tee ${_JWT_FILE} > /dev/null << EOF
   "JWTSupportedAlgs": ["RS256"],
   "BoundAudiences": ["consul.io"],
   "ClaimMappings": {
+    "consul_namespace": "consul_namespace",
     "nomad_namespace": "nomad_namespace",
     "nomad_job_id": "nomad_job_id",
     "nomad_task": "nomad_task",
@@ -143,6 +144,62 @@ curl --silent \
   --request PUT \
   https://${CONSUL_TLS_SERVER_NAME}:8443/v1/acl/binding-rule | jq
 
+
+# -----------------------------------------------------------------------------
+# Create workload identity artifacts for HashiCups, which runs in the default namespace
+# https://developer.hashicorp.com/nomad/tutorials/integrate-consul/consul-acl#configure-consul-for-tasks-workload-identities
+# https://developer.hashicorp.com/nomad/commands/setup/consul
+# -----------------------------------------------------------------------------
+
+echo -e "${_COL}Create Consul binding-rule for Nomad services not in ingress namespace.${_NC}"
+
+# Binding rule for Nomad services not running in the 'ingress' namespace
+consul acl binding-rule create \
+           -method 'nomad-workloads' \
+           -description 'Binding rule for Nomad services authenticated using a workload identity' \
+           -bind-type 'service' \
+           -bind-name '${value.nomad_service}' \
+           -selector '"nomad_service" in value and value.nomad_namespace!=ingress'
+
+echo -e "${_COL}Create Consul binding-rule for Nomad tasks not in ingress namespace.${_NC}"
+
+# Bind rule for Nomad tasks not running in the 'ingress' namespace
+consul acl binding-rule create \
+           -method 'nomad-workloads' \
+           -description 'Binding rule for Nomad tasks authenticated using a workload identity' \
+           -bind-type 'role' \
+           -bind-name 'nomad-${value.nomad_namespace}-tasks' \
+           -selector '"nomad_service" not in value and value.nomad_namespace!=ingress'
+
+echo -e "${_COL}Create Consul ACL policy 'policy-nomad-tasks' for Nomad tasks.${_NC}"
+
+tee ${_POLICY_NOMAD_TASKS} > /dev/null << EOF
+{
+  key_prefix "" {
+    policy = "read"
+  }
+
+  node_prefix "" {
+    policy = "read"
+  }
+
+  service_prefix "" {
+    policy = "read"
+  }
+}
+EOF
+
+consul acl policy create \
+            -name 'policy-nomad-tasks' \
+            -description 'ACL policy used by Nomad tasks' \
+            -rules '@${_POLICY_NOMAD_TASKS}'
+
+echo -e "${_COL}Create Consul ACL role 'nomad-default-tasks' for Nomad tasks.${_NC}"
+
+consul acl role create \
+           -name 'nomad-default-tasks' \
+           -description 'ACL role for Nomad tasks in the default Nomad namespace' \
+           -policy-name 'policy-nomad-tasks'
 
 ## -----------------------------------------------------------------------------
 ## Configure API Gateway Listener and Certificate

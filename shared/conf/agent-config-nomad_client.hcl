@@ -71,6 +71,16 @@ consul {
   client_service_name   = "nomad-client"
   # Specifies if the Nomad servers should join other Nomad servers using Consul.
   client_auto_join      = true
+  # For workload identity with Consul https://developer.hashicorp.com/nomad/docs/configuration/consul#workload-identity
+  service_identity {
+    aud = ["consul.io"]
+    ttl = "1h"
+  }
+
+  task_identity {
+    aud = ["consul.io"]
+    ttl = "1h"
+  }
 }
 
 # Vault              

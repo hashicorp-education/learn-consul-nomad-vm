@@ -5,13 +5,13 @@
 variable "consul_image" {
   description = "The Consul image to use"
   type        = string
-  default     = "hashicorp/consul:1.19.1"
+  default     = "hashicorp/consul:1.22.3"
 }
 
 variable "envoy_image" {
   description = "The Envoy image to use"
   type        = string
-  default     = "hashicorp/envoy:1.29.7"
+  default     = "hashicorp/envoy:1.35.3"
 }
 
 variable "namespace" {
