@@ -23,6 +23,7 @@ _int_PAY_API_FILE="/tmp/intention-payments_api.hcl"
 _int_PUB_API_FILE="/tmp/intention-public_api.hcl"
 _int_FE_FILE="/tmp/intention-frontend.hcl"
 _int_NGINX_FILE="/tmp/intention-nginx.hcl"
+_int_COUNT_FILE="/tmp/intention-count.hcl"
 _int_API_GW_FILE="/tmp/intention-api_gateway.hcl"
 
 #-------------------------------------------------------------------------------
@@ -37,6 +38,7 @@ consul config delete -kind service-intentions -name payments-api
 consul config delete -kind service-intentions -name public-api
 consul config delete -kind service-intentions -name frontend
 consul config delete -kind service-intentions -name nginx
+consul config delete -kind service-intentions -name count-api
 
 if [ "$1 " == "-clean " ]; then
 
@@ -121,6 +123,17 @@ Sources = [
 ]
 EOF
 
+tee ${_int_COUNT_FILE} > /dev/null << EOF
+Kind = "service-intentions"
+Name = "count-api"
+Sources = [
+  {
+    Name   = "count-dashboard"
+    Action = "allow"
+  }
+]
+EOF
+
 
 consul config write ${_int_DB_FILE}
 consul config write ${_int_PROD_API_FILE}
@@ -128,4 +141,5 @@ consul config write ${_int_PAY_API_FILE}
 consul config write ${_int_PUB_API_FILE}
 consul config write ${_int_FE_FILE}
 consul config write ${_int_NGINX_FILE}
+consul config write ${_int_COUNT_FILE}
 # consul config write ${_int_API_GW_FILE}
