@@ -5,7 +5,7 @@
 variable "consul_image" {
   description = "The Consul image to use"
   type        = string
-  default     = "hashicorp/consul:1.22.3"
+  default     = "hashicorp/consul:1.22.5"
 }
 
 variable "envoy_image" {

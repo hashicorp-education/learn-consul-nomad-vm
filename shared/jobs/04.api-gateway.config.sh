@@ -29,6 +29,7 @@ _ssl_crt_file="/tmp/gateway-api-cert.csr"
 _GW_certificate_FILE="/tmp/config-gateway-api-certificate.hcl"
 _GW_config_FILE="/tmp/config-gateway-api.hcl"
 _GW_route_FILE="/tmp/config-gateway-api-tcp-route.hcl"
+_POLICY_NOMAD_TASKS="/tmp/config-policy-nomad-tasks.hcl"
 
 ## Certificate Common Name
 _CERT_COMMON_NAME="hashicups.hashicorp.com"
@@ -49,6 +50,9 @@ consul config delete -kind inline-certificate -name api-gw-certicate
 
 # Remove API Gateway Listener
 consul config delete -kind api-gateway -name api-gateway
+
+consul acl role delete --name nomad-default-tasks
+consul acl policy delete --name policy-nomad-tasks
 
 # Remove all existing binding rules
 # WARNING: if you have existing binding rules you want to maintain, modify this behavior
@@ -174,25 +178,23 @@ consul acl binding-rule create \
 echo -e "${_COL}Create Consul ACL policy 'policy-nomad-tasks' for Nomad tasks.${_NC}"
 
 tee ${_POLICY_NOMAD_TASKS} > /dev/null << EOF
-{
-  key_prefix "" {
-    policy = "read"
-  }
+key_prefix "" {
+  policy = "read"
+}
 
-  node_prefix "" {
-    policy = "read"
-  }
+node_prefix "" {
+  policy = "read"
+}
 
-  service_prefix "" {
-    policy = "read"
-  }
+service_prefix "" {
+  policy = "write"
 }
 EOF
 
 consul acl policy create \
             -name 'policy-nomad-tasks' \
             -description 'ACL policy used by Nomad tasks' \
-            -rules '@${_POLICY_NOMAD_TASKS}'
+            -rules @${_POLICY_NOMAD_TASKS}
 
 echo -e "${_COL}Create Consul ACL role 'nomad-default-tasks' for Nomad tasks.${_NC}"
 
